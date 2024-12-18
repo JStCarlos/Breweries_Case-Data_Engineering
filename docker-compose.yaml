@@ -1,7 +1,7 @@
 x-airflow-common:
   &airflow-common
-  image: ${AIRFLOW_IMAGE_NAME}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME}
+  build: .
   environment:
     AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
@@ -19,6 +19,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
   user: "${AIRFLOW_UID}:0"
   depends_on:
     &airflow-common-depends-on
@@ -57,6 +58,7 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
+    image: airflow-webserver
     command: webserver
     ports:
       - "${AIRFLOW_WEBSERVER_PORT}:8080"
@@ -74,6 +76,7 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
+    image: airflow-scheduler
     command: scheduler
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
@@ -89,6 +92,7 @@ services:
 
   airflow-triggerer:
     <<: *airflow-common
+    image: airflow-triggerer
     command: triggerer
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
@@ -110,6 +114,10 @@ services:
       - |
         mkdir -p /sources/logs /sources/dags /sources/plugins
         chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        /entrypoint airflow connections add 'spark_conn' \
+        --conn-type 'spark' \
+        --conn-host 'spark://spark-master:7077' \
+        --conn-extra '{"queue":"default"}'
         exec /entrypoint airflow version
 
     environment:
@@ -133,27 +141,31 @@ services:
       - bash
       - -c
       - airflow
+        /entrypoint airflow connections add 'spark_conn' \
+        --conn-type 'spark' \
+        --conn-host 'spark://spark-master:7077' \
+        --conn-extra '{"queue":"default"}'
 
-  spark-master:
-    image: airflow/spark-master
-    build: ./spark/master
-    container_name: spark-master
-    ports:
-      - "8082:8080"
-      - "7077:7077"
-    environment:
-      - INIT_DAEMON_STEP=setup_spark
+  # spark-master:
+  #   image: airflow/spark-master
+  #   build: ./spark/master
+  #   container_name: spark-master
+  #   ports:
+  #     - "8082:8080"
+  #     - "7077:7077"
+  #   environment:
+  #     - INIT_DAEMON_STEP=setup_spark
 
-  spark-worker:
-    image: airflow/spark-worker
-    build: ./spark/worker
-    container_name: spark-worker
-    depends_on:
-      - spark-master
-    ports:
-      - "8081:8081"
-    environment:
-      - "SPARK_MASTER=spark://spark-master:7077"
+  # spark-worker:
+  #   image: airflow/spark-worker
+  #   build: ./spark/worker
+  #   container_name: spark-worker
+  #   depends_on:
+  #     - spark-master
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     - "SPARK_MASTER=spark://spark-master:7077"
 
 volumes:
   postgres-db-volume:
