@@ -12,6 +12,7 @@ RUN apt update && \
 
 # Set JAVA_HOME
 ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64/
+ENV PYTHONPATH="/opt/airflow:${PYTHONPATH}"
 RUN export JAVA_HOME
 
 USER airflow

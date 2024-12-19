@@ -18,7 +18,6 @@ services:
     volumes:
       - spark-data:/bitnami
       - ./include:/usr/local/airflow/include
-      - ./apps:/opt/spark-apps
       - ./data:/opt/spark-data
 
   spark-worker:
@@ -35,7 +34,6 @@ services:
     volumes:
       - ./include:/usr/local/airflow/include
       - spark-data:/bitnami
-      - ./apps:/opt/spark-apps
       - ./data:/opt/spark-data
     depends_on:
       - spark-master
