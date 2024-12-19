@@ -16,3 +16,5 @@ S3_BUCKET = os.getenv("S3_BUCKET")
 
 # Breweries API Config
 BREWERY_API_URL = 'https://api.openbrewerydb.org/v1/breweries'
+FILE_FORMAT = 'parquet'
+TIMEZONE = 'America/Sao_Paulo'

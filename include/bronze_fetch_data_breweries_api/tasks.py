@@ -1,13 +1,19 @@
 import requests
-from urllib.parse import urlencode
+from include.datalake.datalake_factory import get_datalake
+from datetime import datetime
+from pyspark.sql import SparkSession
+from pyspark import SparkContext
 import pytz
-import os
-from config.config import BREWERY_API_URL
+from config.config import BREWERY_API_URL, FILE_FORMAT, TIMEZONE
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, LongType
 
 class BonzeFetchDataBreweriesApi:
     def __init__(self):
         self.api_url = BREWERY_API_URL
+        self.timezone = pytz.timezone(TIMEZONE) #Adjust to your timezone
         self.per_page = 200
+        self.datalake = get_datalake()
+        self.spark = SparkSession.builder.appName("BreweriesAPI").getOrCreate()
 
     # Get metadata about the total number of breweries to evaluate the number of pages to fetch
     def get_total_breweries_metadata(self):
@@ -20,17 +26,49 @@ class BonzeFetchDataBreweriesApi:
         
 
 
-    # Fetch breweries data from the breweries API
-    def fetch_breweries_data(self, pages_to_fetch): 
+    # Fetch breweries data from the breweries API and persist into the datalake
+    def fetch_and_persist_breweries_data(self, pages_to_fetch, layer="bronze", **kwargs):
+        execution_date = kwargs.get('execution_date')
+
+        if execution_date:
+            execution_date = execution_date.astimezone(self.timezone).strftime('%Y-%m-%d')
+        else:
+            execution_date = datetime.now().strftime('%Y-%m-%d')
+
+        schema = StructType([
+            StructField("id", StringType(), False),
+            StructField("name", StringType(), False),
+            StructField("brewery_type", StringType(), True),
+            StructField("address_1", StringType(), True),
+            StructField("address_2", StringType(), True),
+            StructField("address_3", StringType(), True),
+            StructField("city", StringType(), True),
+            StructField("state_province", StringType(), True),
+            StructField("postal_code", StringType(), True),
+            StructField("country", StringType(), True),
+            StructField("longitude", StringType(), True),
+            StructField("latitude", StringType(), True),
+            StructField("phone", StringType(), True),
+            StructField("website_url", StringType(), True),
+            StructField("state", StringType(), True),
+            StructField("street", StringType(), True),
+        ])
+
         page = 1       
-        print(f"Pages to fetch COLLEC: {pages_to_fetch}")
-        breweries_data = []
+        print(f"Pages to fetch: {pages_to_fetch}")
+
         while page <= pages_to_fetch:
             url = self.api_url + f"?page={page}&per_page={self.per_page}"
             response = requests.get(url)
             response.raise_for_status()
-            breweries_data.extend(response.json())
-            print(f"Page {page} fetched")
+            breweries_data = response.json()
+
+            df_spark = self.spark.createDataFrame(breweries_data, schema=schema)
+            filename = f"breweries_page_{page}"
+
+            self.datalake.write_file(df_spark, layer, filename, execution_date, FILE_FORMAT)
+
+            print(f"Page {page} fetched and saved as {FILE_FORMAT} in {layer} layer")
             page += 1
-        print(f"Total breweries fetched: {len(breweries_data)}")
-        return breweries_data
+
+        print(f"Total pages fetched: {pages_to_fetch}")
