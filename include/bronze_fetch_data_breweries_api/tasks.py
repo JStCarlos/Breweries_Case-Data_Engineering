@@ -2,10 +2,9 @@ import requests
 from include.datalake.datalake_factory import get_datalake
 from datetime import datetime
 from pyspark.sql import SparkSession
-from pyspark import SparkContext
 import pytz
 from config.config import BREWERY_API_URL, FILE_FORMAT, TIMEZONE
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, LongType
+from pyspark.sql.types import StructType, StructField, StringType
 
 class BonzeFetchDataBreweriesApi:
     def __init__(self):

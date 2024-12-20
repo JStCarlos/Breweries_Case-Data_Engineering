@@ -1,6 +1,4 @@
 from pyspark.sql import SparkSession
-from pyspark import SparkContext
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, LongType
 from pyspark.sql.functions import col, lower, regexp_replace, translate, trim
 from datetime import datetime
 from config.config import FILE_FORMAT, TIMEZONE
@@ -8,7 +6,6 @@ from include.datalake.datalake_factory import get_datalake
 import unicodedata
 import pytz
 import sys
-import os
 
 class SilverTransformDataFromBronze:
     def __init__(self):
