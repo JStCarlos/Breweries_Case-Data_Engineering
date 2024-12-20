@@ -21,6 +21,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
     - ./data:/opt/airflow/data
+    - ./.env:/opt/airflow/.env 
   user: "${AIRFLOW_UID}:0"
   depends_on:
     &airflow-common-depends-on
