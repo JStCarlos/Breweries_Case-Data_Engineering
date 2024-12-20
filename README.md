@@ -173,7 +173,7 @@ This change ensures the correct Java path is set in Docker for machines using Ap
     * bronze_fetch_data_from_api – Ingests raw data from the API into the bronze layer.
     * silver_transform_data_from_bronze – Cleans and transforms the data into the silver layer.
     * gold_aggregate_data_from_silver – Aggregates the data and stores it in the gold layer for analysis.
-5. Once all the DAGs have successfully finished, you can check the data directory on your container to view the files stored in each layer (bronze, silver, and gold).
+5. Once all the DAGs have successfully finished, you can check the directory ["./Breweries_Case-Data_Engineering/data"](data/) on your local machine to view the files stored in each layer (bronze, silver, and gold).
 6. Finally, you can hit your terminal with `docker-compose down` and stop the containers.
 
 ### Monitoring and Alerting
