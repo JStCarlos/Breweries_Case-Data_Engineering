@@ -29,6 +29,10 @@ class LocalDatalake(BaseDatalake):
         
         if not os.path.exists(base_path):
             raise FileNotFoundError(f"Directory {base_path} does not exist.")
+        
+        if partitioned:
+            df = self.spark.read.format(format).load(base_path)
+            return df
 
         files = []
         for root, _, filenames in os.walk(base_path):

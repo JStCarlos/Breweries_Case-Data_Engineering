@@ -20,7 +20,7 @@ class GoldAggregateDataFromSilver:
         else:
             execution_date = datetime.now().strftime('%Y-%m-%d')
 
-        silver_df = self.spark.read.parquet(f"/opt/airflow/data/silver/breweries_data_{execution_date}")
+        silver_df = self.datalake.read_files(layer="silver", execution_date=execution_date, partitioned=True)
         silver_df.show(30)
 
         aggregated_df = (
