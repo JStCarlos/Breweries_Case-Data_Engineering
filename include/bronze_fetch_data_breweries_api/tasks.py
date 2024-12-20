@@ -66,7 +66,7 @@ class BonzeFetchDataBreweriesApi:
             df_spark = self.spark.createDataFrame(breweries_data, schema=schema)
             filename = f"breweries_page_{page}"
 
-            self.datalake.write_file(df_spark, layer, filename, execution_date, FILE_FORMAT)
+            self.datalake.write_file(df_spark, layer, execution_date, filename, FILE_FORMAT)
 
             print(f"Page {page} fetched and saved as {FILE_FORMAT} in {layer} layer")
             page += 1

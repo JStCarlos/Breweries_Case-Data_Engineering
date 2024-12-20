@@ -1,18 +1,24 @@
 from airflow.decorators import dag, task
-from datetime import datetime
-from pyspark import SparkContext
-from pyspark.sql import SparkSession
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from datetime import datetime, timedelta
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.utils.trigger_rule import TriggerRule
 from include.bronze_fetch_data_breweries_api.tasks import BonzeFetchDataBreweriesApi
 
+# DAG to fetch data from the Open Brewery DB API, store it in the bronze layer, and trigger the silver layer DAG for further processing.
 
 bronze_layer_tasks = BonzeFetchDataBreweriesApi()
     
 @dag(
-    start_date=datetime(2024, 1, 1),
-    schedule='@daily',
-    catchup=False,
-    tags=['bronze']
+    dag_id='bronze_layer_ingestion',
+    start_date=datetime.now(),
+    schedule='@once',
+    catchup=True,
+    tags=['bronze', 'ingestion'],
+    is_paused_upon_creation=False,
+    default_args={
+        'retries': 3,
+        'retry_delay': timedelta(minutes=5)
+    }
 )
 
 def bronze_layer():
@@ -24,7 +30,13 @@ def bronze_layer():
     @task.pyspark(conn_id="spark_conn")
     def fetch_and_persist_breweries_data(pages_to_fetch, **kwargs):
         bronze_layer_tasks.fetch_and_persist_breweries_data(pages_to_fetch, layer="bronze", **kwargs)
-    
-    fetch_and_persist_breweries_data(fetch_breweries_metadata())
 
+    trigger_silver_layer = TriggerDagRunOperator(
+        task_id='trigger_silver_layer',
+        trigger_dag_id="silver_layer_transformations",
+        conf={"execution_date": "{{ execution_date }}"},
+        trigger_rule=TriggerRule.ALL_SUCCESS
+    )
+    
+    fetch_and_persist_breweries_data(fetch_breweries_metadata()) >> trigger_silver_layer
 bronze_layer()

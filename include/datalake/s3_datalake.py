@@ -18,16 +18,31 @@ class S3Datalake(BaseDatalake):
             .config("spark.hadoop.fs.s3a.endpoint", f"s3.{region_name}.amazonaws.com") \
             .getOrCreate()
 
-    def write_file(self, df: DataFrame, layer: str, filename: str, execution_date: str, format: str = "parquet"):
-        filepath = f"s3a://{self.bucket_name}/{layer}/breweries_data_{execution_date}/{filename}"
-        df.write.mode("overwrite").format(format).save(filepath)
+    def write_file(self, df: DataFrame, layer: str, execution_date: str, filename: str = None, format: str = "parquet", partitions: list = None):
+        if filename:
+            filepath = f"s3a://{self.bucket_name}/{layer}/breweries_data_{execution_date}/{filename}"
+        else:
+            filepath = f"s3a://{self.bucket_name}/{layer}/breweries_data_{execution_date}/"
+
+        writer = df.write.mode("overwrite").format(format)
+
+        if partitions:
+            df.write.mode("overwrite").format(format).partitionBy(*partitions).save(filepath)
+        else:
+            df.write.mode("overwrite").format(format).save(filepath)
+
+        writer.save(filepath)
         print(f"Data written to S3 file: {filepath}")
 
-    def read_file(self, layer: str, execution_date: str, filename: str, format: str = "parquet") -> DataFrame:
-        filepath = f"s3a://{self.bucket_name}/{layer}/breweries_data_{execution_date}/{filename}"
-        df = self.spark.read.format(format).load(filepath)
-        print(f"Data read from S3 file: {filepath}")
-        return df
+    def read_files(self, layer: str, execution_date: str, format: str = "parquet", partitioned:bool = False):
+        base_path = f"s3a://{self.bucket_name}/{layer}/breweries_data_{execution_date}/"
+
+        try:
+            df = self.spark.read.format(format).load(base_path)
+            print(f"Read data from {base_path}")
+            return df
+        except Exception as e:
+            raise FileNotFoundError(f"Failed to read files from {base_path}: {e}")
 
     def list_files(self, layer: str, execution_date: str, format: str = "parquet") -> list:
         prefix = f"{layer}/breweries_data_{execution_date}/"

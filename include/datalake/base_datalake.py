@@ -3,11 +3,11 @@ from pyspark.sql import DataFrame
 
 class BaseDatalake(ABC):
     @abstractmethod
-    def write_file(self, df: DataFrame, layer: str, filename: str, execution_date: str, format: str = "parquet"):
+    def write_file(self, df: DataFrame, layer: str, execution_date: str, filename: str = None, format: str = "parquet", partitions: list = None):
         pass
 
     @abstractmethod
-    def read_file(self, layer: str, execution_date: str, filename: str, format: str = "parquet") -> DataFrame:
+    def read_files(self, layer: str, execution_date: str, filename: str, format: str = "parquet", partitioned:bool = False) -> DataFrame:
         pass
 
     @abstractmethod

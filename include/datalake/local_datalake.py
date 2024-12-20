@@ -8,18 +8,41 @@ class LocalDatalake(BaseDatalake):
         os.makedirs(self.base_dir, exist_ok=True)
         self.spark = SparkSession.builder.appName("LocalDatalake").getOrCreate()
 
-    def write_file(self, df: DataFrame, layer: str, filename: str, execution_date: str, format: str = "parquet"):
+    def write_file(self, df: DataFrame, layer: str, execution_date: str, filename: str = None, format: str = "parquet", partitions: list = None):
         layer_dir = os.path.join(self.base_dir, layer, f"breweries_data_{execution_date}")
         os.makedirs(layer_dir, exist_ok=True)
-        filepath = os.path.join(layer_dir, filename)
-        df.write.mode("overwrite").format(format).save(filepath)
+
+        if filename:
+            filepath = os.path.join(layer_dir, filename)
+        else:
+            filepath = layer_dir 
+
+        if partitions:
+            df.write.mode("overwrite").format(format).partitionBy(*partitions).save(filepath)
+        else:
+            df.write.mode("overwrite").format(format).save(filepath)
+
         print(f"Data written to local file: {filepath}")
 
-    def read_file(self, layer: str, execution_date: str, filename: str, format: str = "parquet") -> DataFrame:
-        layer_dir = os.path.join(self.base_dir, layer, f"breweries_data_{execution_date}")
-        filepath = os.path.join(layer_dir, filename)
-        df = self.spark.read.format(format).load(filepath)
-        print(f"Data read from local file: {filepath}")
+    def read_files(self, layer: str, execution_date: str, format: str = "parquet", partitioned:bool = False):
+        base_path = os.path.join(self.base_dir, layer, f"breweries_data_{execution_date}")
+        
+        if not os.path.exists(base_path):
+            raise FileNotFoundError(f"Directory {base_path} does not exist.")
+
+        files = []
+        for root, _, filenames in os.walk(base_path):
+            for filename in filenames:
+                if filename.endswith(f".{format}"):
+                    files.append(os.path.join(root, filename))
+                    temp_df = self.spark.read.parquet(os.path.join(root, filename))
+                    temp_df.show()
+        
+        if not files:
+            raise FileNotFoundError(f"No {format} files found in {base_path}")
+
+        df = self.spark.read.format(format).load(files)
+        df.show()
         return df
 
     def list_files(self, layer: str, execution_date: str, format: str = "parquet") -> list:
